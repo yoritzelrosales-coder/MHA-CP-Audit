@@ -210,7 +210,6 @@ main{max-width:860px;margin:0 auto;padding:20px 16px 96px;}
       <div class="fld"><label>Fecha de visita</label><input type="date" id="m-fecha"></div>
       <div class="fld"><label>Trimestre</label><select id="m-trimestre"><option>Q1 2026</option><option>Q2 2026</option><option selected>Q3 2026</option><option>Q4 2026</option><option>Q1 2027</option></select></div>
       <div class="fld"><label>Auditor / Quality</label><select id="m-auditor"><option value="">Selecciona…</option><option>Arturo García</option><option>Itzia Diaz</option><option>Ilia Sandoval</option><option>Yoritzel Rosales</option></select></div>
-      <div class="fld"><label>Visita #</label><select id="m-visita"><option>1° Visita</option><option>2° Visita</option><option>3° Visita</option><option>4° Visita</option></select></div>
     </div>
   </div>
 </div>
@@ -725,7 +724,6 @@ function openReport() {
   const fecha    = document.getElementById('m-fecha').value || '—';
   const trim     = document.getElementById('m-trimestre').value;
   const auditor  = document.getElementById('m-auditor').value || '—';
-  const visita   = document.getElementById('m-visita').value;
 
   let scoresHtml = '';
   SECTION_META.forEach(m => {
@@ -738,27 +736,78 @@ function openReport() {
     </div>`;
   });
 
-  let findingsHtml = '';
+  // ── Checklist completo (todas las preguntas evaluadas) ──────────────────────
+  let checklistHtml = '';
   SECTION_META.forEach(m => {
-    const items = DEFS[m.key].filter(c => c.scored);
-    const fails = items.filter(c => { const s = state[c.id]; return s && s.score === 0; });
-    if (!fails.length) return;
-    findingsHtml += `<div class="r-sec"><h3 class="${m.key}">${m.label}</h3>`;
-    fails.forEach(c => {
-      const s = state[c.id];
-      const af = c.autofail ? ' af' : ' s0';
-      findingsHtml += `<div class="finding${af}">
-        <div class="ft">${c.code} — ${c.t}${c.autofail ? ' <span class="af-tag">AUTOFAIL</span>' : ''}</div>
-        ${s.hallazgo ? `<div class="fd"><strong>Hallazgo:</strong> ${s.hallazgo}</div>` : ''}
-        ${s.accion   ? `<div class="fd"><strong>Acción inmediata:</strong> ${s.accion}</div>` : ''}
-        ${s.accion2  ? `<div class="fd"><strong>Acción C/M plazo:</strong> ${s.accion2}</div>` : ''}
-        ${s.resp     ? `<div class="fd"><strong>Responsable:</strong> ${s.resp}</div>` : ''}
-        ${s.fechalim ? `<div class="fd"><strong>Fecha límite:</strong> ${s.fechalim}</div>` : ''}
+    const r   = results[m.key];
+    const sem = semaforo(r.pct, r.hasPlaga || r.hasCaducado);
+    const secItems = DEFS[m.key];
+    const scored = secItems.filter(c => c.scored);
+    const nEval  = scored.filter(c => state[c.id] && state[c.id].score !== undefined).length;
+    const nFail  = scored.filter(c => state[c.id] && state[c.id].score === 0).length;
+
+    checklistHtml += `<div class="r-sec" style="margin-bottom:18px;">
+      <h3 class="${m.key}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        ${m.label}
+        <span style="margin-left:auto;font-size:12px;font-weight:700;color:${m.color}">${r.pct !== null ? r.pct.toFixed(2)+'%' : '—'}</span>
+        <span class="semaforo ${sem.cls}" style="font-size:10px">${sem.lbl}</span>
+        ${nFail > 0 ? `<span style="font-size:10px;background:#fee2e2;color:#b91c1c;padding:2px 7px;border-radius:10px;font-weight:700">${nFail} No</span>` : ''}
+        <span style="font-size:10px;color:var(--gray-400);font-weight:400">${nEval}/${scored.length} eval.</span>
+      </h3>`;
+
+    let currentSubgroup = null;
+    secItems.forEach(item => {
+      if (item.type === 'subgroup') {
+        currentSubgroup = item.label;
+        checklistHtml += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);background:var(--gray-100);padding:4px 8px;border-radius:4px;margin:8px 0 4px;">${item.label}</div>`;
+        return;
+      }
+      if (!item.scored) return;
+      const s = state[item.id] || {};
+      const scored_val = s.score;
+      let icon, rowBg, codeColor;
+      if (scored_val === 2)         { icon = '✅'; rowBg = '#f0fdf4'; codeColor = '#15803d'; }
+      else if (scored_val === 0)    { icon = '🔴'; rowBg = '#fff5f5'; codeColor = '#b91c1c'; }
+      else                          { icon = '·';  rowBg = 'transparent'; codeColor = 'var(--gray-400)'; }
+
+      const afTag = item.autofail ? `<span style="font-size:9px;font-weight:700;background:#1f2937;color:#fff;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">AF</span>` : '';
+      checklistHtml += `<div style="display:grid;grid-template-columns:22px auto 1fr;gap:6px;padding:5px 6px 5px 0;border-bottom:1px solid #f3f4f6;background:${rowBg};border-radius:4px;margin-bottom:2px;align-items:start;">
+        <div style="text-align:center;font-size:13px;padding-top:1px">${icon}</div>
+        <div style="font-size:10px;font-weight:700;color:${codeColor};white-space:nowrap;padding-top:2px">${item.code}${afTag}</div>
+        <div style="font-size:12px;color:var(--gray-700)">${item.t}</div>
       </div>`;
+
+      // Si es No: mostrar detalles del hallazgo
+      if (scored_val === 0) {
+        const details = [
+          s.hallazgo ? ['Hallazgo', s.hallazgo] : null,
+          s.accion   ? ['Acción inmediata', s.accion] : null,
+          s.accion2  ? ['Acción C/M plazo', s.accion2] : null,
+          s.resp     ? ['Responsable', s.resp] : null,
+          s.fechalim ? ['Fecha límite', s.fechalim] : null,
+        ].filter(Boolean);
+        if (details.length) {
+          checklistHtml += `<div style="margin:0 0 6px 28px;padding:8px 10px;background:#fff;border-left:3px solid ${item.autofail ? '#1f2937' : '#ef4444'};border-radius:0 4px 4px 0;">`;
+          details.forEach(([k,v]) => {
+            checklistHtml += `<div style="font-size:11px;margin-bottom:3px"><strong style="color:var(--gray-600)">${k}:</strong> <span style="color:var(--gray-700)">${v}</span></div>`;
+          });
+          checklistHtml += `</div>`;
+        } else {
+          checklistHtml += `<div style="margin:0 0 6px 28px;font-size:11px;color:var(--gray-400);font-style:italic">Sin detalle registrado</div>`;
+        }
+      }
     });
-    findingsHtml += '</div>';
+    checklistHtml += `</div>`;
   });
-  if (!findingsHtml) findingsHtml = '<p style="font-size:13px;color:var(--gray-500);">✅ Sin hallazgos registrados.</p>';
+
+  // Resumen rápido de hallazgos (solo No) para el inicio
+  let totalFails = 0;
+  SECTION_META.forEach(m => {
+    totalFails += DEFS[m.key].filter(c => c.scored && state[c.id] && state[c.id].score === 0).length;
+  });
+  const failsBanner = totalFails > 0
+    ? `<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;font-weight:700;color:#b91c1c;">⚠️ ${totalFails} criterio${totalFails!==1?'s':''} No cumplido${totalFails!==1?'s':''} en esta auditoría</div>`
+    : `<div style="background:#dcfce7;border:1.5px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;font-weight:700;color:#15803d;">✅ Todos los criterios evaluados cumplen</div>`;
 
   const fortalezas = document.getElementById('obs-fortalezas').value;
   const riesgos    = document.getElementById('obs-riesgos').value;
@@ -771,7 +820,7 @@ function openReport() {
       <div class="rm"><strong>Centro de Producción</strong>${cp}</div>
       <div class="rm"><strong>Ciudad</strong>${ciudad}</div>
       <div class="rm"><strong>Fecha</strong>${fecha}</div>
-      <div class="rm"><strong>Trimestre</strong>${trim} · ${visita}</div>
+      <div class="rm"><strong>Trimestre</strong>${trim}</div>
       <div class="rm"><strong>Auditor</strong>${auditor}</div>
       <div class="rm"><strong>Resultado</strong><span class="semaforo ${gSem.cls}">${gSem.lbl}</span>${total.autofail ? ' · ' + total.afTipo : ''}</div>
     </div>
@@ -783,8 +832,9 @@ function openReport() {
       </div>
       ${scoresHtml}
     </div>
-    <h3 style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--gray-700);">Hallazgos</h3>
-    ${findingsHtml}
+    <h3 style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--gray-700);">Checklist de criterios evaluados</h3>
+    ${failsBanner}
+    ${checklistHtml}
     ${fortalezas || riesgos || acuerdos ? `
     <h3 style="font-size:13px;font-weight:700;margin:14px 0 10px;color:var(--gray-700);">Observaciones</h3>
     ${fortalezas ? `<div class="finding"><div class="ft">💪 Fortalezas</div><div class="fd">${fortalezas}</div></div>` : ''}
@@ -821,14 +871,14 @@ async function exportTrackerRow() {
   const fecha   = document.getElementById('m-fecha').value || '';
   const trim    = document.getElementById('m-trimestre').value || '';
   const auditor = document.getElementById('m-auditor').value || '';
-  const visita  = document.getElementById('m-visita').value || '';
+
 
   const wb = new ExcelJS.Workbook();
   const wsReg = wb.addWorksheet('Registro');
   const wsHal = wb.addWorksheet('Hallazgos');
 
   // Headers — Registro
-  const regHdrs = ['Ciudad','Centro de Producción','Visita','Fecha','Trimestre','Auditor',
+  const regHdrs = ['Ciudad','Centro de Producción','Fecha','Trimestre','Auditor',
     'Score SA (%)','Score ET (%)','Score LP (%)','Score MT (%)','Score PA (%)','Score SI (%)',
     'Score Total (%)','Autofail','Link Reporte','Link Fotos'];
   const hRow = wsReg.addRow(regHdrs);
@@ -837,7 +887,7 @@ async function exportTrackerRow() {
 
   const fmt = v => v !== null ? parseFloat(v.toFixed(2)) : '';
   wsReg.addRow([
-    ciudad, cp, visita, fecha, trim, auditor,
+    ciudad, cp, fecha, trim, auditor,
     fmt(results.sa.pct), fmt(results.et.pct), fmt(results.lp.pct),
     fmt(results.mt.pct), fmt(results.pa.pct), fmt(results.si.pct),
     fmt(total.pct), total.afTipo,
@@ -845,7 +895,7 @@ async function exportTrackerRow() {
   ]);
   wsReg.columns.forEach(c => { c.width = 20; });
 
-  // Hallazgos sheet
+  // Hallazgos sheet (solo No)
   const halHdrs = ['Sección','Código','Pregunta','Hallazgo','Acción Inmediata','Acción C/M Plazo','Responsable','Fecha Límite','Autofail'];
   const hh = wsHal.addRow(halHdrs);
   hh.font = {bold:true}; hh.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF0F766E'}};
@@ -858,6 +908,58 @@ async function exportTrackerRow() {
     });
   });
   wsHal.columns.forEach(col => { col.width = 30; });
+
+  // Trazabilidad sheet (todos los criterios)
+  const wsTraz = wb.addWorksheet('Trazabilidad');
+  const trazHdrs = ['Sección','Subsección','Código','Pregunta','Resultado','Pts (0/1)','Hallazgo','Acción Inmediata','Acción C/M Plazo','Responsable','Fecha Límite','Autofail'];
+  const th = wsTraz.addRow(trazHdrs);
+  th.font = {bold:true, color:{argb:'FFFFFFFF'}};
+  th.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF0F766E'}};
+  th.alignment = {horizontal:'center',vertical:'middle',wrapText:true};
+  wsTraz.row_dimensions = {};
+  wsTraz.getRow(1).height = 28;
+
+  const SEC_COLORS = {sa:'DBEAFE',et:'D1FAE5',lp:'CCFBF1',mt:'EDE9FE',pa:'FEE2E2',si:'FEF3C7'};
+  let currentSubsec = '';
+  SECTION_META.forEach(m => {
+    DEFS[m.key].forEach(item => {
+      if (item.type === 'subgroup') { currentSubsec = item.label; return; }
+      if (!item.scored) return;
+      const s = state[item.id] || {};
+      const scored_val = s.score;
+      const resultado = scored_val === 2 ? 'Sí ✅' : scored_val === 0 ? 'No 🔴' : 'Sin evaluar';
+      const pts = scored_val === 2 ? 1 : scored_val === 0 ? 0 : '';
+      const rowData = [
+        m.short, currentSubsec, item.code, item.t,
+        resultado, pts,
+        s.hallazgo||'', s.accion||'', s.accion2||'', s.resp||'', s.fechalim||'',
+        item.autofail ? item.afLabel : ''
+      ];
+      const tRow = wsTraz.addRow(rowData);
+      // Color row based on result
+      const bgArgb = scored_val === 2 ? 'FFF0FDF4' : scored_val === 0 ? 'FFFFF5F5' : 'FFFAFAFA';
+      tRow.eachCell((cell, colNum) => {
+        if (colNum <= 3) {
+          cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF'+SEC_COLORS[m.key]}};
+        } else {
+          cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:bgArgb}};
+        }
+        cell.border = {
+          top:{style:'thin',color:{argb:'FFE5E7EB'}},
+          bottom:{style:'thin',color:{argb:'FFE5E7EB'}},
+          left:{style:'thin',color:{argb:'FFE5E7EB'}},
+          right:{style:'thin',color:{argb:'FFE5E7EB'}}
+        };
+        cell.alignment = {vertical:'middle',wrapText:true};
+      });
+      // Bold the Resultado cell
+      if (scored_val === 0) tRow.getCell(5).font = {bold:true, color:{argb:'FFB91C1C'}};
+      if (scored_val === 2) tRow.getCell(5).font = {bold:true, color:{argb:'FF15803D'}};
+    });
+  });
+  const trazWidths = [14, 38, 10, 65, 14, 8, 40, 40, 40, 20, 14, 10];
+  wsTraz.columns.forEach((col, i) => { col.width = trazWidths[i] || 20; });
+  wsTraz.getRow(1).height = 28;
 
   const buf = await wb.xlsx.writeBuffer();
   const a = document.createElement('a');
@@ -875,7 +977,6 @@ function saveJSON() {
       fecha:    document.getElementById('m-fecha').value,
       trim:     document.getElementById('m-trimestre').value,
       auditor:  document.getElementById('m-auditor').value,
-      visita:   document.getElementById('m-visita').value,
     },
     state,
     obs: {
