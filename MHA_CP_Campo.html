@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MHA CP · Evaluación Sanitaria · Foodology</title>
+<script>
+(function(){
+  var KEY = 'mha_cp_auth';
+  var PASS = 'QualityFoodology';
+  if(sessionStorage.getItem(KEY) !== '1'){
+    document.addEventListener('DOMContentLoaded', function(){
+      document.body.style.display = 'none';
+      var overlay = document.createElement('div');
+      overlay.id = 'auth-overlay';
+      overlay.innerHTML = `
+        <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f0f2f5;font-family:'Segoe UI',system-ui,sans-serif;">
+          <div style="background:#fff;border-radius:16px;padding:40px 36px;max-width:360px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.10);text-align:center;">
+            <div style="background:#0f766e;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:26px;">🏭</div>
+            <div style="font-size:20px;font-weight:800;color:#1f2937;margin-bottom:4px;">MHA · Centro de Producción</div>
+            <div style="font-size:13px;color:#6b7280;margin-bottom:28px;">Foodology · Auditoría Sanitaria CP</div>
+            <input id="auth-input" type="password" placeholder="Contraseña de acceso"
+              style="width:100%;padding:12px 16px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;outline:none;margin-bottom:12px;"/>
+            <div id="auth-error" style="color:#dc2626;font-size:13px;margin-bottom:10px;display:none;">Contraseña incorrecta</div>
+            <button id="auth-btn"
+              style="width:100%;background:#0f766e;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;">
+              Ingresar
+            </button>
+          </div>
+        </div>`;
+      document.body.parentNode.insertBefore(overlay, document.body);
+      function tryLogin(){
+        if(document.getElementById('auth-input').value === PASS){
+          sessionStorage.setItem(KEY,'1');
+          overlay.remove();
+          document.body.style.display = '';
+        } else {
+          document.getElementById('auth-error').style.display = 'block';
+          document.getElementById('auth-input').value = '';
+          document.getElementById('auth-input').focus();
+        }
+      }
+      document.getElementById('auth-btn').addEventListener('click', tryLogin);
+      document.getElementById('auth-input').addEventListener('keydown', function(e){ if(e.key==='Enter') tryLogin(); });
+      document.getElementById('auth-input').focus();
+    });
+  }
+})();
+</script>
+<style>
+:root {
+  --brand:#0f766e;--brand-dark:#0d6461;--brand-light:#f0fdfa;
+  --green:#16a34a;--yellow:#d97706;--orange:#ea580c;--red:#dc2626;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
+  --gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;--gray-800:#1f2937;
+  --radius:10px;--shadow:0 1px 4px rgba(0,0,0,.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:var(--gray-800);}
+.app-header{background:var(--brand);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(15,118,110,.35);}
+.app-header .logo{font-size:20px;font-weight:800;letter-spacing:-.5px;}
+.app-header .logo span{opacity:.7;font-weight:400;font-size:13px;display:block;margin-top:-2px;}
+.global-pill{margin-left:auto;display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.18);border-radius:50px;padding:4px 16px;min-width:80px;text-align:center;}
+.global-pill .pct{font-size:22px;font-weight:800;line-height:1;}
+.global-pill .lbl{font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.4px;}
+.semaforo{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px;display:inline-block;}
+.sem-ejemplar{background:#dcfce7;color:#15803d;}
+.sem-aprobado{background:#fef9c3;color:#854d0e;}
+.sem-condicion{background:#ffedd5;color:#c2410c;}
+.sem-noAprobado{background:#fee2e2;color:#b91c1c;}
+.sem-autofail{background:#1f2937;color:#fff;}
+.sem-pending{background:var(--gray-200);color:var(--gray-500);}
+main{max-width:860px;margin:0 auto;padding:20px 16px 96px;}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden;}
+.sec-hdr{padding:13px 18px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;font-weight:700;font-size:14px;border-bottom:2px solid transparent;transition:background .15s;}
+.sec-hdr:hover{filter:brightness(.97);}
+.sec-hdr.sa{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;}
+.sec-hdr.et{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+.sec-hdr.lp{background:#f0fdfa;color:#0f766e;border-color:#99f6e4;}
+.sec-hdr.mt{background:#faf5ff;color:#7c3aed;border-color:#ddd6fe;}
+.sec-hdr.pa{background:#fff5f5;color:#dc2626;border-color:#fecaca;}
+.sec-hdr.si{background:#fffbeb;color:#b45309;border-color:#fde68a;}
+.sec-hdr.meta-hdr{background:var(--gray-50);color:var(--gray-700);border-color:var(--gray-200);}
+.sec-score{margin-left:auto;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.sec-score.sa{background:#bfdbfe;color:#1d4ed8;}
+.sec-score.et{background:#bbf7d0;color:#15803d;}
+.sec-score.lp{background:#99f6e4;color:#0f766e;}
+.sec-score.mt{background:#ddd6fe;color:#7c3aed;}
+.sec-score.pa{background:#fecaca;color:#dc2626;}
+.sec-score.si{background:#fde68a;color:#b45309;}
+.prog-fill.sa{background:#3b82f6;}
+.prog-fill.et{background:#22c55e;}
+.prog-fill.lp{background:#14b8a6;}
+.prog-fill.mt{background:#8b5cf6;}
+.prog-fill.pa{background:#ef4444;}
+.prog-fill.si{background:#d97706;}
+.r-sec h3.sa{border-color:#bfdbfe;color:#1d4ed8;}
+.r-sec h3.et{border-color:#bbf7d0;color:#15803d;}
+.r-sec h3.lp{border-color:#99f6e4;color:#0f766e;}
+.r-sec h3.mt{border-color:#ddd6fe;color:#7c3aed;}
+.r-sec h3.pa{border-color:#fecaca;color:#dc2626;}
+.r-sec h3.si{border-color:#fde68a;color:#b45309;}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 18px;}
+@media(max-width:580px){.meta-grid{grid-template-columns:1fr;}}
+.fld{display:flex;flex-direction:column;gap:4px;}
+.fld label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);}
+.fld input,.fld select,.fld textarea{border:1.5px solid var(--gray-200);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--gray-800);background:var(--gray-50);transition:border-color .15s;}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--brand);background:#fff;}
+.fld textarea{resize:vertical;min-height:60px;}
+.subgroup-hdr{padding:7px 18px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;background:var(--gray-100);color:var(--gray-600);border-bottom:1px solid var(--gray-200);border-top:2px solid var(--gray-200);}
+.crit-wrap{border-bottom:1px solid var(--gray-100);}
+.crit-wrap:last-child{border-bottom:none;}
+.crit-row{display:grid;grid-template-columns:26px 1fr auto;min-height:52px;}
+.crit-num{background:var(--gray-50);border-right:1px solid var(--gray-100);display:flex;align-items:flex-start;justify-content:center;padding-top:14px;font-size:10px;font-weight:700;color:var(--gray-400);}
+.crit-body{padding:10px 14px 8px;}
+.crit-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.score-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.sc-btn{border:1.5px solid var(--gray-200);background:#fff;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--gray-500);transition:all .15s;}
+.sc-btn:hover{border-color:var(--gray-400);}
+.sc-btn[data-v="0"].active{background:#fee2e2;border-color:var(--red);color:var(--red);}
+.sc-btn[data-v="2"].active{background:#dcfce7;border-color:var(--green);color:var(--green);}
+.af-tag{display:inline-block;font-size:10px;font-weight:700;background:#1f2937;color:#fff;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle;}
+.crit-detail{display:none;padding:10px 14px 14px;background:var(--gray-50);border-top:1px solid var(--gray-100);flex-direction:column;gap:8px;}
+.crit-detail.open{display:flex;}
+.detail-row{display:flex;gap:8px;align-items:flex-start;}
+.detail-row label{font-size:11px;font-weight:700;color:var(--gray-600);min-width:90px;padding-top:7px;}
+.detail-row input,.detail-row textarea{flex:1;border:1.5px solid var(--gray-200);border-radius:6px;padding:6px 9px;font-size:12px;background:#fff;}
+.detail-row textarea{min-height:48px;resize:vertical;}
+.detail-row input:focus,.detail-row textarea:focus{outline:none;border-color:var(--brand);}
+.crit-icon{width:38px;border-left:1px solid var(--gray-100);background:var(--gray-50);display:flex;align-items:center;justify-content:center;font-size:16px;}
+.prog-wrap{padding:0 18px 14px;}
+.prog-top{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-bottom:4px;}
+.prog-bar{height:7px;background:var(--gray-200);border-radius:10px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:10px;transition:width .3s;}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:10px 18px;background:var(--gray-50);border-top:1px solid var(--gray-100);font-size:11px;color:var(--gray-500);}
+.lg{display:flex;align-items:center;gap:5px;}
+.ld{width:10px;height:10px;border-radius:50%;}
+.score-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 18px;}
+@media(max-width:600px){.score-summary{grid-template-columns:1fr 1fr;}}
+.sc-card{background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:8px;padding:12px;text-align:center;}
+.sc-card .num{font-size:28px;font-weight:800;line-height:1;}
+.sc-card .lbl{font-size:10px;color:var(--gray-500);margin-top:3px;}
+.pts-lbl{font-size:11px;font-weight:600;color:var(--gray-500);margin-top:2px;}
+.sc-card .semrow{margin-top:5px;}
+.sc-card.total-card{border-color:var(--brand);}
+.sc-card.total-card .num{color:var(--brand);}
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--gray-200);padding:10px 20px;display:flex;gap:10px;justify-content:flex-end;z-index:100;box-shadow:0 -2px 10px rgba(0,0,0,.07);}
+.btn{padding:9px 20px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--brand);color:#fff;}
+.btn-primary:hover{background:var(--brand-dark);}
+.btn-outline{background:#fff;color:var(--gray-700);border:1.5px solid var(--gray-300);}
+.btn-outline:hover{background:var(--gray-50);}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:20px 12px;overflow-y:auto;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:720px;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:auto;}
+.modal h2{font-size:18px;color:var(--brand);margin-bottom:3px;}
+.modal .sub{font-size:12px;color:var(--gray-500);margin-bottom:18px;}
+.report-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;}
+.rm{font-size:12px;}
+.rm strong{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--gray-500);}
+.r-scores{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+.r-sc{flex:1;min-width:100px;background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:8px;padding:12px;text-align:center;}
+.r-sc .n{font-size:26px;font-weight:800;}
+.r-sc .l{font-size:10px;color:var(--gray-500);margin-top:2px;}
+.r-sc .s{margin-top:5px;}
+.r-sec{margin-bottom:16px;}
+.r-sec h3{font-size:13px;font-weight:700;border-bottom:2px solid var(--gray-200);padding-bottom:5px;margin-bottom:8px;}
+.finding{padding:9px 11px;border-radius:6px;margin-bottom:7px;border-left:3px solid var(--gray-300);background:var(--gray-50);}
+.finding.s0{border-color:var(--red);background:#fff5f5;}
+.finding.af{border-color:#1f2937;background:#f1f5f9;}
+.finding .ft{font-size:12px;font-weight:600;}
+.finding .fd{font-size:11px;color:var(--gray-600);margin-top:3px;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--gray-200);}
+.print-hint{font-size:11px;color:var(--gray-400);text-align:center;margin-top:10px;}
+@media print{
+  .app-header,.bottom-bar,.modal-bg{display:none!important;}
+  body{background:#fff;}
+  .card{box-shadow:none;border:1px solid #ddd;}
+  body.printing-report header.app-header,
+  body.printing-report .bottom-bar,
+  body.printing-report main{display:none!important;}
+  body.printing-report .modal-bg{display:block!important;background:none!important;position:static!important;padding:0!important;overflow:visible!important;z-index:auto!important;}
+  body.printing-report .modal{max-width:100%!important;box-shadow:none!important;border-radius:0!important;padding:16px!important;max-height:none!important;overflow:visible!important;}
+  body.printing-report .modal-btns,body.printing-report .print-hint{display:none!important;}
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+</head>
+<body>
+<header class="app-header">
+  <div class="logo">🏭 Foodology · MHA CP<span>Auditoría Sanitaria — Centro de Producción · v.07/2026</span></div>
+  <div class="global-pill"><div class="pct" id="g-pct">—</div><div class="lbl" id="g-pts" style="font-size:10px;opacity:.65;margin-top:1px;">— pts</div><div class="lbl" id="g-sem">Sin evaluar</div></div>
+</header>
+<main>
+
+<!-- DATOS DE LA VISITA -->
+<div class="card">
+  <div class="sec-hdr meta-hdr" onclick="toggleSec('meta')">📋 Datos de la visita</div>
+  <div id="sec-meta">
+    <div class="meta-grid">
+      <div class="fld"><label>Centro de Producción</label>
+        <select id="m-cp" onchange="autoFillCiudad()">
+          <option value="">Selecciona CP…</option>
+          <optgroup label="Ciudad de México"><option data-ciudad="Ciudad de México">CP México</option></optgroup>
+          <optgroup label="Guadalajara"><option data-ciudad="Guadalajara">CP Guadalajara</option></optgroup>
+          <optgroup label="Monterrey"><option data-ciudad="Monterrey">CP Monterrey</option></optgroup>
+        </select>
+      </div>
+      <div class="fld"><label>Ciudad</label><input type="text" id="m-ciudad" placeholder="Se llena automáticamente" readonly style="background:var(--gray-100);color:var(--gray-500);cursor:default;"></div>
+      <div class="fld"><label>Fecha de visita</label><input type="date" id="m-fecha"></div>
+      <div class="fld"><label>Trimestre</label><select id="m-trimestre"><option>Q1 2026</option><option>Q2 2026</option><option selected>Q3 2026</option><option>Q4 2026</option><option>Q1 2027</option></select></div>
+      <div class="fld"><label>Auditor / Quality</label><select id="m-auditor"><option value="">Selecciona…</option><option>Arturo García</option><option>Itzia Diaz</option><option>Ilia Sandoval</option><option>Yoritzel Rosales</option></select></div>
+      <div class="fld"><label>Visita #</label><select id="m-visita"><option>1° Visita</option><option>2° Visita</option><option>3° Visita</option><option>4° Visita</option></select></div>
+    </div>
+  </div>
+</div>
+
+<!-- SECCIÓN SA — Seguridad Alimentaria -->
+<div class="card">
+  <div class="sec-hdr sa" onclick="toggleSec('sa')">🛡️ Seguridad Alimentaria (SA)<span class="semaforo sem-pending" id="sem-sa" style="margin-left:auto">Sin evaluar</span><span class="sec-score sa" id="score-sa">—</span></div>
+  <div id="sec-sa">
+    <div class="prog-wrap" style="padding-top:12px"><div class="prog-top"><span>Criterios evaluados</span><span id="prog-sa-lbl">—</span></div><div class="prog-bar"><div class="prog-fill sa" id="prog-sa" style="width:0%"></div></div></div>
+    <div id="crit-sa"></div>
+    <div class="legend"><div class="lg"><div class="ld" style="background:#dcfce7;border:1px solid #16a34a"></div>Sí / Cumple</div><div class="lg"><div class="ld" style="background:#fee2e2;border:1px solid #dc2626"></div>No / No cumple</div></div>
+  </div>
+</div>
+
+<!-- SECCIÓN ET — Entrenamiento -->
+<div class="card">
+  <div class="sec-hdr et" onclick="toggleSec('et')">📚 Entrenamiento (ET)<span class="semaforo sem-pending" id="sem-et" style="margin-left:auto">Sin evaluar</span><span class="sec-score et" id="score-et">—</span></div>
+  <div id="sec-et">
+    <div class="prog-wrap" style="padding-top:12px"><div class="prog-top"><span>Criterios evaluados</span><span id="prog-et-lbl">—</span></div><div class="prog-bar"><div class="prog-fill et" id="prog-et" style="width:0%"></div></div></div>
+    <div id="crit-et"></div>
+    <div class="legend"><div class="lg"><div class="ld" style="background:#dcfce7;border:1px solid #16a34a"></div>Sí / Cumple</div><div class="lg"><div class="ld" style="background:#fee2e2;border:1px solid #dc2626"></div>No / No cumple</div></div>
+  </div>
+</div>
+
+<!-- SECCIÓN LP — Limpieza y Prevención -->
+<div class="card">
+  <div class="sec-hdr lp" onclick="toggleSec('lp')">🧹 Limpieza y Prevención (LP)<span class="semaforo sem-pending" id="sem-lp" style="margin-left:auto">Sin evaluar</span><span class="sec-score lp" id="score-lp">—</span></div>
+  <div id="sec-lp">
+    <div class="prog-wrap" style="padding-top:12px"><div class="prog-top"><span>Criterios evaluados</span><span id="prog-lp-lbl">—</span></div><div class="prog-bar"><div class="prog-fill lp" id="prog-lp" style="width:0%"></div></div></div>
+    <div id="crit-lp"></div>
+    <div class="legend"><div class="lg"><div class="ld" style="background:#dcfce7;border:1px solid #16a34a"></div>Sí / Cumple</div><div class="lg"><div class="ld" style="background:#fee2e2;border:1px solid #dc2626"></div>No / No cumple</div></div>
+  </div>
+</div>
+
+<!-- SECCIÓN MT — Mantenimiento -->
+<div class="card">
+  <div class="sec-hdr mt" onclick="toggleSec('mt')">🔧 Mantenimiento (MT)<span class="semaforo sem-pending" id="sem-mt" style="margin-left:auto">Sin evaluar</span><span class="sec-score mt" id="score-mt">—</span></div>
+  <div id="sec-mt">
+    <div class="prog-wrap" style="padding-top:12px"><div class="prog-top"><span>Criterios evaluados</span><span id="prog-mt-lbl">—</span></div><div class="prog-bar"><div class="prog-fill mt" id="prog-mt" style="width:0%"></div></div></div>
+    <div id="crit-mt"></div>
+    <div class="legend"><div class="lg"><div class="ld" style="background:#dcfce7;border:1px solid #16a34a"></div>Sí / Cumple</div><div class="lg"><div class="ld" style="background:#fee2e2;border:1px solid #dc2626"></div>No / No cumple</div></div>
+  </div>
+</div>
+
+<!-- SECCIÓN PA — Plagas -->
+<div class="card">
+  <div class="sec-hdr pa" onclick="toggleSec('pa')">🦟 Control de Plagas (PA)<span class="semaforo sem-pending" id="sem-pa" style="margin-left:auto">Sin evaluar</span><span class="sec-score pa" id="score-pa">—</span></div>
+  <div id="sec-pa">
+    <div class="prog-wrap" style="padding-top:12px"><div class="prog-top"><span>Criterios evaluados</span><span id="prog-pa-lbl">—</span></div><div class="prog-bar"><div class="prog-fill pa" id="prog-pa" style="width:0%"></div></div></div>
+    <div id="crit-pa"></div>
+    <div class="legend"><div class="lg"><div class="ld" style="background:#dcfce7;border:1px solid #16a34a"></div>Sí / Cumple</div><div class="lg"><div class="ld" style="background:#fee2e2;border:1px solid #dc2626"></div>No / No cumple</div><div class="lg"><div class="ld" style="background:#1f2937;border:1px solid #374151"></div>Cualquier No = AUTOFAIL</div></div>
+  </div>
+</div>
+
+<!-- SECCIÓN SI — Seguridad Industrial -->
+<div class="card">
+  <div class="sec-hdr si" onclick="toggleSec('si')">⛑️ Seguridad Industrial (SI)<span class="semaforo sem-pending" id="sem-si" style="margin-left:auto">Sin evaluar</span><span class="sec-score si" id="score-si">—</span></div>
+  <div id="sec-si">
+    <div class="prog-wrap" style="padding-top:12px"><div class="prog-top"><span>Criterios evaluados</span><span id="prog-si-lbl">—</span></div><div class="prog-bar"><div class="prog-fill si" id="prog-si" style="width:0%"></div></div></div>
+    <div id="crit-si"></div>
+    <div class="legend"><div class="lg"><div class="ld" style="background:#dcfce7;border:1px solid #16a34a"></div>Sí / Cumple</div><div class="lg"><div class="ld" style="background:#fee2e2;border:1px solid #dc2626"></div>No / No cumple</div></div>
+  </div>
+</div>
+
+<!-- RESUMEN -->
+<div class="card">
+  <div class="sec-hdr meta-hdr" onclick="toggleSec('resumen')">📊 Resumen de puntajes</div>
+  <div id="sec-resumen">
+    <div class="score-summary">
+      <div class="sc-card total-card" style="grid-column:1/-1"><div class="num" id="rs-total">—</div><div class="pts-lbl" id="rs-total-pts">— pts</div><div class="lbl">Total</div><div class="semrow" id="rs-total-sem"><span class="semaforo sem-pending">Sin evaluar</span></div></div>
+    </div>
+    <div class="score-summary" style="padding-top:0">
+      <div class="sc-card"><div class="num" style="color:#1d4ed8" id="rs-sa">—</div><div class="pts-lbl" id="rs-sa-pts">—</div><div class="lbl">Seg. Alimentaria</div><div class="semrow" id="rs-sa-sem"><span class="semaforo sem-pending">—</span></div></div>
+      <div class="sc-card"><div class="num" style="color:#15803d" id="rs-et">—</div><div class="pts-lbl" id="rs-et-pts">—</div><div class="lbl">Entrenamiento</div><div class="semrow" id="rs-et-sem"><span class="semaforo sem-pending">—</span></div></div>
+      <div class="sc-card"><div class="num" style="color:#0f766e" id="rs-lp">—</div><div class="pts-lbl" id="rs-lp-pts">—</div><div class="lbl">Limpieza</div><div class="semrow" id="rs-lp-sem"><span class="semaforo sem-pending">—</span></div></div>
+      <div class="sc-card"><div class="num" style="color:#7c3aed" id="rs-mt">—</div><div class="pts-lbl" id="rs-mt-pts">—</div><div class="lbl">Mantenimiento</div><div class="semrow" id="rs-mt-sem"><span class="semaforo sem-pending">—</span></div></div>
+      <div class="sc-card"><div class="num" style="color:#dc2626" id="rs-pa">—</div><div class="pts-lbl" id="rs-pa-pts">—</div><div class="lbl">Plagas</div><div class="semrow" id="rs-pa-sem"><span class="semaforo sem-pending">—</span></div></div>
+      <div class="sc-card"><div class="num" style="color:#b45309" id="rs-si">—</div><div class="pts-lbl" id="rs-si-pts">—</div><div class="lbl">Seg. Industrial</div><div class="semrow" id="rs-si-sem"><span class="semaforo sem-pending">—</span></div></div>
+    </div>
+    <div style="padding:0 18px 14px;"><p style="font-size:11px;color:var(--gray-500);">🟢 Ejemplar ≥91% &nbsp;|&nbsp; 🟡 Aprobado 81–90% &nbsp;|&nbsp; 🟠 Aprobado Cond. 71–80% &nbsp;|&nbsp; 🔴 No Aprobado ≤70% &nbsp;|&nbsp; ⛔ Autofail: PA1 (Plaga) o SA4.3 (Caducado)</p></div>
+  </div>
+</div>
+
+<!-- OBSERVACIONES -->
+<div class="card">
+  <div class="sec-hdr meta-hdr" onclick="toggleSec('obs')">💬 Observaciones y compromisos</div>
+  <div id="sec-obs" style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
+    <div class="fld"><label>Fortalezas observadas</label><textarea id="obs-fortalezas" placeholder="¿Qué está haciendo bien el centro de producción?"></textarea></div>
+    <div class="fld"><label>Riesgos o urgencias adicionales</label><textarea id="obs-riesgos" placeholder="Temas que requieren escalada fuera de los criterios anteriores"></textarea></div>
+    <div class="fld"><label>Acuerdos tomados con el encargado</label><textarea id="obs-acuerdos" placeholder="Compromisos verbales del día de la visita"></textarea></div>
+  </div>
+</div>
+</main>
+
+<div class="bottom-bar">
+  <button class="btn btn-outline" style="color:#dc2626;border-color:#fca5a5;" onclick="resetForm()">🔄 Nueva evaluación</button>
+  <button class="btn btn-outline" onclick="saveJSON()">💾 Guardar borrador</button>
+  <button class="btn btn-outline" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d;" onclick="exportTrackerRow()">📥 Descargar fila tracker</button>
+  <button class="btn btn-primary" onclick="openReport()">📄 Ver reporte</button>
+</div>
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal-content"></div></div>
+
+<script>
+// ─── SECTION METADATA ─────────────────────────────────────────────────────────
+const SECTION_META = [
+  {key:'sa', label:'🛡️ Seguridad Alimentaria', short:'Seg. Alimentaria', color:'#1d4ed8'},
+  {key:'et', label:'📚 Entrenamiento',          short:'Entrenamiento',   color:'#15803d'},
+  {key:'lp', label:'🧹 Limpieza y Prevención',  short:'Limpieza',        color:'#0f766e'},
+  {key:'mt', label:'🔧 Mantenimiento',           short:'Mantenimiento',   color:'#7c3aed'},
+  {key:'pa', label:'🦟 Control de Plagas',       short:'Plagas',          color:'#dc2626'},
+  {key:'si', label:'⛑️ Seguridad Industrial',   short:'Seg. Industrial', color:'#b45309'},
+];
+
+// ─── QUESTION DEFINITIONS ─────────────────────────────────────────────────────
+const DEFS = {
+  sa: [
+    // ── SA1 · Higiene Personal ──────────────────────────────────────────────
+    {type:'subgroup', label:'🧼 SA1 · Higiene Personal'},
+    {id:'sa1_1',  code:'SA1.1',  type:'scored2', t:'El lavado de manos se realiza cuando es necesario.', scored:true},
+    {id:'sa1_2',  code:'SA1.2',  type:'scored2', t:'Los procedimientos de lavado de manos son ejecutados apropiadamente.', scored:true},
+    {id:'sa1_3',  code:'SA1.3',  type:'scored2', t:'Los dispensadores están abastecidos y dispensan fácilmente en todos los fregaderos de lavado de manos.', scored:true},
+    {id:'sa1_4',  code:'SA1.4',  type:'scored2', t:'El fregadero para el lavado de manos está operativo y se emplea sólo para su función.', scored:true},
+    {id:'sa1_5',  code:'SA1.5',  type:'scored2', t:'El fregadero para lavado de manos está accesible.', scored:true},
+    {id:'sa1_6',  code:'SA1.6',  type:'scored2', t:'El procedimiento de lavado de manos está publicado en todos los fregaderos de lavado de manos.', scored:true},
+    {id:'sa1_7',  code:'SA1.7',  type:'scored2', t:'Los miembros del equipo no trabajan mientras están enfermos.', scored:true},
+    {id:'sa1_8',  code:'SA1.8',  type:'scored2', t:'Un miembro del equipo tiene una cortada expuesta o con costra cubierta en la mano/el brazo.', scored:true},
+    {id:'sa1_9',  code:'SA1.9',  type:'scored2', t:'Los miembros del equipo protegen su cabello.', scored:true},
+    {id:'sa1_10', code:'SA1.10', type:'scored2', t:'Las uñas cumplen con el estándar y no representan un riesgo.', scored:true},
+    {id:'sa1_11', code:'SA1.11', type:'scored2', t:'Los colaboradores no portan accesorios.', scored:true},
+    // ── SA2 · Temperatura Inicial ───────────────────────────────────────────
+    {type:'subgroup', label:'🌡️ SA2 · Temperatura Inicial'},
+    {id:'sa2_1',  code:'SA2.1',  type:'scored2', t:'Procedimiento de toma de temperatura inicial completado según estándar.', scored:true},
+    // ── SA3 · Contaminación Cruzada ─────────────────────────────────────────
+    {type:'subgroup', label:'⚠️ SA3 · Inocuidad y Contaminación Cruzada'},
+    {id:'sa3_1',  code:'SA3.1',  type:'scored2', t:'Los procedimientos de lavado de vegetales son ejecutados apropiadamente.', scored:true},
+    {id:'sa3_2',  code:'SA3.2',  type:'scored2', t:'Alimentos contaminados se descartan inmediatamente.', scored:true},
+    {id:'sa3_3',  code:'SA3.3',  type:'scored2', t:'Todos los químicos se almacenan apropiadamente.', scored:true},
+    {id:'sa3_4',  code:'SA3.4',  type:'scored2', t:'Las directrices y los procedimientos sobre alérgenos se cumplen correctamente.', scored:true},
+    {id:'sa3_5',  code:'SA3.5',  type:'scored2', t:'No hay goteras en el área de producción.', scored:true},
+    {id:'sa3_6',  code:'SA3.6',  type:'scored2', t:'No hay obstrucción en el drenaje.', scored:true},
+    {id:'sa3_7',  code:'SA3.7',  type:'scored2', t:'El área de preparación de alimentos está libre de contaminantes potenciales.', scored:true},
+    {id:'sa3_8',  code:'SA3.8',  type:'scored2', t:'Los productos cocinados y crudos se mantienen separados, sin riesgo potencial de contaminación.', scored:true},
+    {id:'sa3_9',  code:'SA3.9',  type:'scored2', t:'El celular personal no es usado en la cocina.', scored:true},
+    {id:'sa3_10', code:'SA3.10', type:'scored2', t:'La comida de miembros del equipo se almacena adecuadamente y no se prepara en equipos de producto.', scored:true},
+    {id:'sa3_11', code:'SA3.11', type:'scored2', t:'El proceso de descongelación cumple con el estándar.', scored:true},
+    {id:'sa3_12', code:'SA3.12', type:'scored2', t:'Las latas están en buenas condiciones.', scored:true},
+    {id:'sa3_13', code:'SA3.13', type:'scored2', t:'El sistema PEPS se cumple.', scored:true},
+    {id:'sa3_14', code:'SA3.14', type:'scored2', t:'Alimentos y material de empaque no tienen contacto directo con el suelo.', scored:true},
+    {id:'sa3_15', code:'SA3.15', type:'scored2', t:'Los alimentos están protegidos contra contaminación.', scored:true},
+    // ── SA4 · PPP / Temperaturas ────────────────────────────────────────────
+    {type:'subgroup', label:'🌡️ SA4 · PPP / Temperaturas de Retención'},
+    {id:'sa4_1',  code:'SA4.1',  type:'scored2', t:'Los PPP cocidos se mantienen a temperatura correcta (≥60 °C).', scored:true},
+    {id:'sa4_2',  code:'SA4.2',  type:'scored2', t:'Los PPP fríos se retienen a 4 °C o menos.', scored:true},
+    {id:'sa4_3',  code:'SA4.3',  type:'scored2', t:'No hay alimentos caducados.', scored:true, autofail:true, afLabel:'Caducado'},
+    {id:'sa4_4',  code:'SA4.4',  type:'scored2', t:'Todos los alimentos están marcados apropiadamente (nombre + fecha caducidad).', scored:true},
+    {id:'sa4_5',  code:'SA4.5',  type:'scored2', t:'Los alimentos viejos y los nuevos no se mezclan (PEPS / FEFO).', scored:true},
+    // ── SA5 · Sanitización y Utensilios ────────────────────────────────────
+    {type:'subgroup', label:'🧴 SA5 · Sanitización y Utensilios'},
+    {id:'sa5_1',  code:'SA5.1',  type:'scored2', t:'Los retenes sanitarios y recipientes para utensilios en uso cumplen con la correcta concentración.', scored:true},
+    {id:'sa5_2',  code:'SA5.2',  type:'scored2', t:'Las soluciones sanitizantes tienen la concentración adecuada.', scored:true},
+    {id:'sa5_3',  code:'SA5.3',  type:'scored2', t:'Los trapos están limpios y en buenas condiciones.', scored:true},
+    {id:'sa5_4',  code:'SA5.4',  type:'scored2', t:'Los trapos se encuentran sumergidos en solución sanitizante.', scored:true},
+    {id:'sa5_5',  code:'SA5.5',  type:'scored2', t:'Existe retén sanitario en cada área.', scored:true},
+    {id:'sa5_6',  code:'SA5.6',  type:'scored2', t:'El almacenamiento de contenedores de alimentos y utensilios es adecuado.', scored:true},
+    {id:'sa5_7',  code:'SA5.7',  type:'scored2', t:'Los contenedores de alimentos y utensilios se mantienen limpios y en buenas condiciones.', scored:true},
+    {id:'sa5_8',  code:'SA5.8',  type:'scored2', t:'Los cucharones se encuentran almacenados correctamente y están en buenas condiciones.', scored:true},
+    {id:'sa5_9',  code:'SA5.9',  type:'scored2', t:'Todas las superficies en contacto con los alimentos se mantienen limpias y en buenas condiciones.', scored:true},
+    {id:'sa5_10', code:'SA5.10', type:'scored2', t:'El procedimiento de lavar, enjuagar y sanitizar se sigue correctamente en los utensilios.', scored:true},
+    {id:'sa5_11', code:'SA5.11', type:'scored2', t:'Los equipos que tengan superficies en contacto con alimentos están libres de moho.', scored:true},
+    {id:'sa5_12', code:'SA5.12', type:'scored2', t:'Todos los fregaderos de preparación y equipos funcionan correctamente.', scored:true},
+    // ── SA6 · Registros y Supervisión ───────────────────────────────────────
+    {type:'subgroup', label:'📋 SA6 · Registros y Supervisión'},
+    {id:'sa6_1',  code:'SA6.1',  type:'scored2', t:'Las infracciones críticas han sido corregidas.', scored:true},
+    {id:'sa6_2',  code:'SA6.2',  type:'scored2', t:'Todos los registros revisados están completados correctamente.', scored:true},
+    {id:'sa6_3',  code:'SA6.3',  type:'scored2', t:'Al menos se tiene un termómetro calibrado y funcionando en el sitio.', scored:true},
+    {id:'sa6_4',  code:'SA6.4',  type:'scored2', t:'Hay tiras de prueba para verificar concentración de sanitizantes.', scored:true},
+    {id:'sa6_5',  code:'SA6.5',  type:'scored2', t:'Se realiza recorrido de supervisión sanitaria.', scored:true},
+  ],
+  et: [
+    // ── ET1 · Capacitación ──────────────────────────────────────────────────
+    {type:'subgroup', label:'📖 ET1 · Capacitación del Equipo'},
+    {id:'et1_1',  code:'ET1.1',  type:'scored2', t:'Finalización de la capacitación de miembros del equipo.', scored:true},
+    {id:'et1_2',  code:'ET1.2',  type:'scored2', t:'El jefe de cocina puede acceder a los documentos principales de entrenamiento.', scored:true},
+    {id:'et1_3',  code:'ET1.3',  type:'scored2', t:'Los colaboradores tienen el conocimiento necesario de MHA.', scored:true},
+  ],
+  lp: [
+    // ── LP1 · Basura ────────────────────────────────────────────────────────
+    {type:'subgroup', label:'🗑️ LP1 · Manejo de Basura'},
+    {id:'lp1_1',  code:'LP1.1',  type:'scored2', t:'Los botes de basura no se desbordan.', scored:true},
+    {id:'lp1_2',  code:'LP1.2',  type:'scored2', t:'Todas las tapas, rampas y los exteriores de los botes de basura están limpios y sin acumulación.', scored:true},
+    {id:'lp1_3',  code:'LP1.3',  type:'scored2', t:'Los botes de basura no tienen mal olor.', scored:true},
+    {id:'lp1_4',  code:'LP1.4',  type:'scored2', t:'Los botes de basura tienen bolsas de basura.', scored:true},
+    {id:'lp1_5',  code:'LP1.5',  type:'scored2', t:'Los botes de basura respetan la separación de residuos orgánicos e inorgánicos.', scored:true},
+    {id:'lp1_6',  code:'LP1.6',  type:'scored2', t:'Las puertas del basurero y las tapas están cerradas.', scored:true},
+    {id:'lp1_7',  code:'LP1.7',  type:'scored2', t:'El exterior del basurero está limpio y libre de grasa.', scored:true},
+    {id:'lp1_8',  code:'LP1.8',  type:'scored2', t:'El área de basurero no tiene alimentos expuestos.', scored:true},
+    // ── LP2 · Accesos ───────────────────────────────────────────────────────
+    {type:'subgroup', label:'🚪 LP2 · Accesos y Ventanas'},
+    {id:'lp2_1',  code:'LP2.1',  type:'scored2', t:'Manijas y perillas de las puertas están limpias y libres de acumulación.', scored:true},
+    {id:'lp2_2',  code:'LP2.2',  type:'scored2', t:'Umbrales de las ventanas están libres de insectos y acumulación.', scored:true},
+    // ── LP3 · Pisos y Paredes ───────────────────────────────────────────────
+    {type:'subgroup', label:'🏗️ LP3 · Pisos, Paredes y Rodapiés'},
+    {id:'lp3_1',  code:'LP3.1',  type:'scored2', t:'Las hawaianas están limpias y no son un riesgo de contaminación.', scored:true},
+    {id:'lp3_2',  code:'LP3.2',  type:'scored2', t:'Paredes están limpias y libres de acumulación.', scored:true},
+    {id:'lp3_3',  code:'LP3.3',  type:'scored2', t:'Pisos están limpios y libres de acumulación y basura.', scored:true},
+    {id:'lp3_4',  code:'LP3.4',  type:'scored2', t:'Rodapiés están limpios y libres de acumulación.', scored:true},
+    // ── LP4 · Techo y Ventilación ───────────────────────────────────────────
+    {type:'subgroup', label:'🌀 LP4 · Techo, Iluminación y Ventilación'},
+    {id:'lp4_1',  code:'LP4.1',  type:'scored2', t:'Placas del techo y rejillas están limpias y libres de polvo y acumulación.', scored:true},
+    {id:'lp4_2',  code:'LP4.2',  type:'scored2', t:'Las luces accesibles están limpias y libres de insectos y acumulación.', scored:true},
+    {id:'lp4_3',  code:'LP4.3',  type:'scored2', t:'Las ventilaciones están limpias y libres de polvo y acumulación.', scored:true},
+    {id:'lp4_4',  code:'LP4.4',  type:'scored2', t:'Todas las ventilaciones y ventiladores (si están presentes) están funcionando y en buenas condiciones.', scored:true},
+    // ── LP5 · Equipos de Cocina ─────────────────────────────────────────────
+    {type:'subgroup', label:'🍳 LP5 · Equipos de Cocina'},
+    {id:'lp5_1',  code:'LP5.1',  type:'scored2', t:'Todos los hornos (UNOX) están limpios y libres de acumulación.', scored:true},
+    {id:'lp5_2',  code:'LP5.2',  type:'scored2', t:'Los hornos de microondas están limpios y libres de acumulación.', scored:true},
+    {id:'lp5_3',  code:'LP5.3',  type:'scored2', t:'Las parrillas, estufas y estufones están limpias y libres de acumulación.', scored:true},
+    {id:'lp5_4',  code:'LP5.4',  type:'scored2', t:'La plancha está limpia y libre de acumulación.', scored:true},
+    {id:'lp5_5',  code:'LP5.5',  type:'scored2', t:'La máquina de alto vacío está limpia y libre de acumulaciones.', scored:true},
+    {id:'lp5_6',  code:'LP5.6',  type:'scored2', t:'Las freidoras están limpias y libres de acumulación.', scored:true},
+    {id:'lp5_7',  code:'LP5.7',  type:'scored2', t:'Las campanas están limpias y libres de acumulación (grasa).', scored:true},
+    {id:'lp5_8',  code:'LP5.8',  type:'scored2', t:'El baño maría está limpio y libre de acumulación.', scored:true},
+    {id:'lp5_9',  code:'LP5.9',  type:'scored2', t:'Las mesas de trabajo están limpias y libres de acumulación.', scored:true},
+    {id:'lp5_10', code:'LP5.10', type:'scored2', t:'Equipos en desuso están limpios, emplayados y con rótulo.', scored:true},
+    // ── LP6 · Cámaras de Frío ───────────────────────────────────────────────
+    {type:'subgroup', label:'❄️ LP6 · Cámaras de Refrigeración y Congelación'},
+    {id:'lp6_1',  code:'LP6.1',  type:'scored2', t:'El exterior de las cámaras de refrigeración y congelación están limpios y libres de acumulación.', scored:true},
+    {id:'lp6_2',  code:'LP6.2',  type:'scored2', t:'Pisos, paredes y techos de la cámara de refrigeración e interior de refrigeradores portátiles están limpios y libres de acumulación y moho.', scored:true},
+    {id:'lp6_3',  code:'LP6.3',  type:'scored2', t:'Los estantes, taras y espigueros están limpios y libres de acumulación.', scored:true},
+    {id:'lp6_4',  code:'LP6.4',  type:'scored2', t:'Los empaques están limpios y libres de acumulación.', scored:true},
+    {id:'lp6_5',  code:'LP6.5',  type:'scored2', t:'Luces, accesorios, unidades de ventilación y guardas de ventiladores de la cámara están limpios y libres de acumulación.', scored:true},
+    {id:'lp6_6',  code:'LP6.6',  type:'scored2', t:'El difusor está limpio y libre de acumulación.', scored:true},
+    {id:'lp6_7',  code:'LP6.7',  type:'scored2', t:'La luminaria del equipo está limpia y libre de acumulación.', scored:true},
+    // ── LP7 · Tarjas ────────────────────────────────────────────────────────
+    {type:'subgroup', label:'🚿 LP7 · Tarjas'},
+    {id:'lp7_1',  code:'LP7.1',  type:'scored2', t:'Las manijas, cuello y pulverizador están limpios y libres de acumulación.', scored:true},
+    {id:'lp7_2',  code:'LP7.2',  type:'scored2', t:'Las tuberías están limpias y libres de acumulación.', scored:true},
+    {id:'lp7_3',  code:'LP7.3',  type:'scored2', t:'Tarjas libres de acumulaciones o residuos orgánicos después de realizar el método de lavar / enjuagar / sanitizar.', scored:true},
+    // ── LP8 · Estanterías ───────────────────────────────────────────────────
+    {type:'subgroup', label:'📦 LP8 · Estanterías y Taras'},
+    {id:'lp8_1',  code:'LP8.1',  type:'scored2', t:'Las estanterías están limpias y libres de acumulación.', scored:true},
+    {id:'lp8_2',  code:'LP8.2',  type:'scored2', t:'Las taras están limpias y libres de acumulación.', scored:true},
+    // ── LP9 · Cárcamo y Utensilios de Limpieza ──────────────────────────────
+    {type:'subgroup', label:'💧 LP9 · Cárcamo y Utensilios de Limpieza'},
+    {id:'lp9_1',  code:'LP9.1',  type:'scored2', t:'El área del cárcamo se encuentra limpia y sin acumulaciones.', scored:true},
+    {id:'lp9_2',  code:'LP9.2',  type:'scored2', t:'Los utensilios de limpieza se encuentran limpios.', scored:true},
+  ],
+  mt: [
+    // ── MT1 · Botes de Basura (Mantenimiento) ───────────────────────────────
+    {type:'subgroup', label:'🗑️ MT1 · Botes de Basura — Estado'},
+    {id:'mt1_1',  code:'MT1.1',  type:'scored2', t:'Los botes de basura tienen tapa.', scored:true},
+    {id:'mt1_2',  code:'MT1.2',  type:'scored2', t:'Los botes de basura y tapas se encuentran en buenas condiciones y evitan derrames.', scored:true},
+    {id:'mt1_3',  code:'MT1.3',  type:'scored2', t:'Los botes de basura están colocados de manera efectiva a lo largo de la cocina.', scored:true},
+    {id:'mt1_4',  code:'MT1.4',  type:'scored2', t:'El área del basurero y el contenedor (si está presente) está en buen estado.', scored:true},
+    // ── MT2 · Puertas y Ventanas ────────────────────────────────────────────
+    {type:'subgroup', label:'🚪 MT2 · Puertas y Ventanas'},
+    {id:'mt2_1',  code:'MT2.1',  type:'scored2', t:'Puertas, marcos, manijas y umbrales están en buenas condiciones y funcionan apropiadamente.', scored:true},
+    {id:'mt2_2',  code:'MT2.2',  type:'scored2', t:'Ventanas en buenas condiciones.', scored:true},
+    {id:'mt2_3',  code:'MT2.3',  type:'scored2', t:'Las hawaianas están completas y no están rotas.', scored:true},
+    // ── MT3 · Paredes y Drenajes ────────────────────────────────────────────
+    {type:'subgroup', label:'🏗️ MT3 · Paredes, Drenajes y Cárcamo'},
+    {id:'mt3_1',  code:'MT3.1',  type:'scored2', t:'Paredes están en buenas condiciones.', scored:true},
+    {id:'mt3_2',  code:'MT3.2',  type:'scored2', t:'Losetas y rodapiés están en buenas condiciones.', scored:true},
+    {id:'mt3_3',  code:'MT3.3',  type:'scored2', t:'Los drenajes de piso están en buenas condiciones.', scored:true},
+    {id:'mt3_4',  code:'MT3.4',  type:'scored2', t:'Los drenajes están libres de olores y agua estancada.', scored:true},
+    {id:'mt3_5',  code:'MT3.5',  type:'scored2', t:'Los drenajes tienen algún dispositivo que evita el ingreso de plagas.', scored:true},
+    {id:'mt3_6',  code:'MT3.6',  type:'scored2', t:'El área del cárcamo no presenta orificios que permitan el alojamiento de plagas.', scored:true},
+    // ── MT4 · Iluminación y Techo ───────────────────────────────────────────
+    {type:'subgroup', label:'💡 MT4 · Iluminación y Techo'},
+    {id:'mt4_1',  code:'MT4.1',  type:'scored2', t:'Los focos están funcionando y tienen un color uniforme.', scored:true},
+    {id:'mt4_2',  code:'MT4.2',  type:'scored2', t:'Las cubiertas están presentes y no están dañadas. Los focos son de material inastillable.', scored:true},
+    {id:'mt4_3',  code:'MT4.3',  type:'scored2', t:'El techo no está roto, no tiene desprendible ni presenta manchas de agua.', scored:true},
+    {id:'mt4_4',  code:'MT4.4',  type:'scored2', t:'El techo es de material higiénico y no representa un riesgo de contaminación.', scored:true},
+    // ── MT5 · Equipos Generales ─────────────────────────────────────────────
+    {type:'subgroup', label:'⚙️ MT5 · Equipos Generales'},
+    {id:'mt5_1',  code:'MT5.1',  type:'scored2', t:'El equipo está funcionando apropiadamente sin piezas rotas o faltantes.', scored:true},
+    {id:'mt5_2',  code:'MT5.2',  type:'scored2', t:'Los equipos no tienen cables expuestos.', scored:true},
+    {id:'mt5_3',  code:'MT5.3',  type:'scored2', t:'Los equipos cuentan con reparaciones adecuadas.', scored:true},
+    // ── MT6 · Cámaras y Refrigeración ───────────────────────────────────────
+    {type:'subgroup', label:'❄️ MT6 · Cámaras y Refrigeración — Estado'},
+    {id:'mt6_1',  code:'MT6.1',  type:'scored2', t:'Todas las cámaras, mesas de trabajo y refrigeradores portátiles cumplen con la temperatura adecuada.', scored:true},
+    {id:'mt6_2',  code:'MT6.2',  type:'scored2', t:'Todas las cámaras, mesas de trabajo y refrigeradores portátiles sin piezas rotas o faltantes.', scored:true},
+    {id:'mt6_3',  code:'MT6.3',  type:'scored2', t:'Estantes y rejillas en óptimas condiciones.', scored:true},
+    {id:'mt6_4',  code:'MT6.4',  type:'scored2', t:'El difusor está en buenas condiciones.', scored:true},
+    {id:'mt6_5',  code:'MT6.5',  type:'scored2', t:'La luminaria del equipo funciona de forma correcta.', scored:true},
+    // ── MT7 · Tarjas — Estado ───────────────────────────────────────────────
+    {type:'subgroup', label:'🚿 MT7 · Tarjas — Estado'},
+    {id:'mt7_1',  code:'MT7.1',  type:'scored2', t:'Las tarjas no presentan ningún componente con fuga.', scored:true},
+    {id:'mt7_2',  code:'MT7.2',  type:'scored2', t:'Las tarjas no presentan ningún componente dañado u oxidado.', scored:true},
+    {id:'mt7_3',  code:'MT7.3',  type:'scored2', t:'Las tarjas están identificadas correctamente.', scored:true},
+    // ── MT8 · Infraestructura y Herramientas de Limpieza ────────────────────
+    {type:'subgroup', label:'🧱 MT8 · Infraestructura y Utensilios de Limpieza'},
+    {id:'mt8_1',  code:'MT8.1',  type:'scored2', t:'Las paredes y losetas están en buenas condiciones y sin orificios.', scored:true},
+    {id:'mt8_2',  code:'MT8.2',  type:'scored2', t:'Los utensilios de limpieza tienen todos sus componentes en buen estado.', scored:true},
+    {id:'mt8_3',  code:'MT8.3',  type:'scored2', t:'El drenaje cuenta con dispositivo para evitar ingreso de plagas.', scored:true},
+    {id:'mt8_4',  code:'MT8.4',  type:'scored2', t:'El drenaje no tiene reflujo o estancamiento de agua.', scored:true},
+  ],
+  pa: [
+    // ── PA1 · Control de Plagas — AUTOFAIL ──────────────────────────────────
+    {type:'subgroup', label:'🦟 PA1 · Control de Plagas (AUTOFAIL)'},
+    {id:'pa1_1',  code:'PA1.1',  type:'scored2', t:'No hay evidencia de plaga mayor (roedores, cucarachas grandes, aves).', scored:true, autofail:true, afLabel:'Plaga'},
+    {id:'pa1_2',  code:'PA1.2',  type:'scored2', t:'No hay evidencia de plaga menor (moscas, mosquitos, cucarachas pequeñas).', scored:true, autofail:true, afLabel:'Plaga'},
+    {id:'pa1_3',  code:'PA1.3',  type:'scored2', t:'No hay evidencias de plaga (heces, restos, mordeduras, nidos).', scored:true, autofail:true, afLabel:'Plaga'},
+    {id:'pa1_4',  code:'PA1.4',  type:'scored2', t:'Los últimos 3 servicios de fumigación están documentados.', scored:true, autofail:true, afLabel:'Plaga'},
+    {id:'pa1_5',  code:'PA1.5',  type:'scored2', t:'Los dispositivos de control de plagas están en buen estado y colocados correctamente.', scored:true, autofail:true, afLabel:'Plaga'},
+  ],
+  si: [
+    // ── SI1 · Seguridad Industrial ──────────────────────────────────────────
+    {type:'subgroup', label:'⛑️ SI1 · Seguridad Industrial'},
+    {id:'si1_1',  code:'SI1.1',  type:'scored2', t:'No existen riesgos de seguridad en el área de producción.', scored:true},
+    {id:'si1_2',  code:'SI1.2',  type:'scored2', t:'El botiquín de primeros auxilios está presente y en un lugar accesible.', scored:true},
+    {id:'si1_3',  code:'SI1.3',  type:'scored2', t:'Los extinguidores de fuego están presentes, accesibles y no están vencidos.', scored:true},
+  ],
+};
+
+const state = {};
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderBlock(secKey) {
+  const container = document.getElementById('crit-' + secKey);
+  container.innerHTML = '';
+  let qNum = 0;
+  DEFS[secKey].forEach(item => {
+    if (item.type === 'subgroup') {
+      container.appendChild(buildSubgroup(item.label));
+    } else {
+      qNum++;
+      if (!state[item.id]) state[item.id] = {};
+      container.appendChild(buildRow(item, qNum, secKey));
+      restoreRow(item.id);
+    }
+  });
+  updateScores();
+}
+
+function buildSubgroup(label) {
+  const d = document.createElement('div');
+  d.className = 'subgroup-hdr';
+  d.textContent = label;
+  return d;
+}
+
+function buildRow(c, num, secKey) {
+  const w = document.createElement('div');
+  w.className = 'crit-wrap';
+  w.id = 'wrap-' + c.id;
+  const af = c.autofail ? `<span class="af-tag">AUTOFAIL</span>` : '';
+  const btns = `<button class="sc-btn" data-v="2" onclick="setScore('${c.id}',2,'${secKey}')">✅ Sí</button><button class="sc-btn" data-v="0" onclick="setScore('${c.id}',0,'${secKey}')">🔴 No</button>`;
+  const detail = `<div class="crit-detail" id="detail-${c.id}">
+    <div class="detail-row"><label>Hallazgo</label><textarea placeholder="Describe el hallazgo…" id="hal-${c.id}" oninput="saveField('${c.id}')"></textarea></div>
+    <div class="detail-row"><label>Acción inmediata</label><textarea placeholder="¿Qué se corrigió durante la visita?" id="acc-${c.id}" oninput="saveField('${c.id}')"></textarea></div>
+    <div class="detail-row"><label>Acción C/M plazo</label><textarea placeholder="Acción correctiva a corto/mediano plazo" id="acc2-${c.id}" oninput="saveField('${c.id}')"></textarea></div>
+    <div class="detail-row"><label>Responsable</label><input type="text" placeholder="Nombre o puesto" id="res-${c.id}" oninput="saveField('${c.id}')"></div>
+    <div class="detail-row"><label>Fecha límite</label><input type="date" id="fec-${c.id}" oninput="saveField('${c.id}')"></div>
+  </div>`;
+  w.innerHTML = `<div class="crit-row"><div class="crit-num">${num}</div><div class="crit-body"><div style="font-size:10px;color:var(--gray-500);font-weight:600;margin-bottom:2px;">${c.code}</div><div class="crit-title">${c.t}${af}</div><div class="score-btns" style="margin-top:6px;">${btns}</div></div><div class="crit-icon" id="icon-${c.id}">·</div></div>${detail}`;
+  return w;
+}
+
+// ─── SCORING ──────────────────────────────────────────────────────────────────
+function setScore(id, score, secKey) {
+  if (!state[id]) state[id] = {};
+  state[id].score = score;
+  updateRowUI(id, score);
+  updateScores();
+}
+
+function updateRowUI(id, score) {
+  const row = document.getElementById('wrap-' + id);
+  if (!row) return;
+  row.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
+  const btn = row.querySelector(`.sc-btn[data-v="${score}"]`);
+  if (btn) btn.classList.add('active');
+  const icons = {2:'✅', 0:'🔴'};
+  const el = document.getElementById('icon-' + id);
+  if (el) el.textContent = icons[score] !== undefined ? icons[score] : '·';
+  const d = document.getElementById('detail-' + id);
+  if (d) { if (score === 0) d.classList.add('open'); else d.classList.remove('open'); }
+}
+
+function saveField(id) {
+  if (!state[id]) state[id] = {};
+  const h  = document.getElementById('hal-'  + id);
+  const a  = document.getElementById('acc-'  + id);
+  const a2 = document.getElementById('acc2-' + id);
+  const r  = document.getElementById('res-'  + id);
+  const f  = document.getElementById('fec-'  + id);
+  if (h)  state[id].hallazgo = h.value;
+  if (a)  state[id].accion   = a.value;
+  if (a2) state[id].accion2  = a2.value;
+  if (r)  state[id].resp     = r.value;
+  if (f)  state[id].fechalim = f.value;
+}
+
+function restoreRow(id) {
+  const s = state[id];
+  if (!s) return;
+  if (s.score !== undefined) updateRowUI(id, s.score);
+  const h  = document.getElementById('hal-'  + id); if (h  && s.hallazgo) h.value  = s.hallazgo;
+  const a  = document.getElementById('acc-'  + id); if (a  && s.accion)   a.value  = s.accion;
+  const a2 = document.getElementById('acc2-' + id); if (a2 && s.accion2)  a2.value = s.accion2;
+  const r  = document.getElementById('res-'  + id); if (r  && s.resp)     r.value  = s.resp;
+  const f  = document.getElementById('fec-'  + id); if (f  && s.fechalim) f.value  = s.fechalim;
+}
+
+function calcSection(key) {
+  const scored = DEFS[key].filter(i => i.scored === true);
+  let earned = 0, possible = 0, evaluated = 0, hasPlaga = false, hasCaducado = false;
+  scored.forEach(c => {
+    const s = state[c.id];
+    if (!s || s.score === undefined) return;
+    evaluated++;
+    possible += 2;
+    earned += s.score;
+    if (c.autofail && s.score === 0) {
+      if (c.afLabel === 'Plaga') hasPlaga = true;
+      if (c.afLabel === 'Caducado') hasCaducado = true;
+    }
+  });
+  const pct = possible > 0 ? parseFloat((earned / possible * 100).toFixed(2)) : null;
+  return { earned, possible, evaluated, total: scored.length, pct, hasPlaga, hasCaducado };
+}
+
+function calcTotal(results) {
+  let earnedAll = 0, possibleAll = 0, hasPlaga = false, hasCaducado = false;
+  SECTION_META.forEach(m => {
+    const r = results[m.key];
+    earnedAll   += r.earned;
+    possibleAll += r.possible;
+    if (r.hasPlaga)    hasPlaga = true;
+    if (r.hasCaducado) hasCaducado = true;
+  });
+  const pct = possibleAll > 0 ? parseFloat((earnedAll / possibleAll * 100).toFixed(2)) : null;
+  let afTipo = 'NO';
+  if (hasPlaga && hasCaducado) afTipo = 'Plaga y Caducado';
+  else if (hasPlaga)    afTipo = 'Plaga';
+  else if (hasCaducado) afTipo = 'Caducado';
+  const autofail = hasPlaga || hasCaducado;
+  return { pct, autofail, afTipo, earnedAll, possibleAll };
+}
+
+function semaforo(pct, autofail) {
+  if (autofail)      return {cls:'sem-autofail',   lbl:'⛔ Autofail'};
+  if (pct === null)  return {cls:'sem-pending',     lbl:'Sin evaluar'};
+  if (pct >= 91)     return {cls:'sem-ejemplar',    lbl:'🟢 Ejemplar'};
+  if (pct >= 81)     return {cls:'sem-aprobado',    lbl:'🟡 Aprobado'};
+  if (pct >= 71)     return {cls:'sem-condicion',   lbl:'🟠 Cond.'};
+  return                    {cls:'sem-noAprobado',  lbl:'🔴 No Aprobado'};
+}
+
+function updateScores() {
+  const results = {};
+  SECTION_META.forEach(m => { results[m.key] = calcSection(m.key); });
+  const total = calcTotal(results);
+
+  SECTION_META.forEach(m => {
+    const r   = results[m.key];
+    const sem = semaforo(r.pct, r.hasPlaga || r.hasCaducado);
+    const sc  = document.getElementById('score-' + m.key);
+    if (sc) sc.textContent = r.pct !== null ? r.earned/2 + '/' + r.possible/2 + ' pts · ' + r.pct.toFixed(2) + '%' : '—';
+    const s = document.getElementById('sem-' + m.key);
+    if (s) { s.className = 'semaforo ' + sem.cls; s.textContent = sem.lbl; }
+    const p   = document.getElementById('prog-' + m.key);
+    const lbl = document.getElementById('prog-' + m.key + '-lbl');
+    if (p)   p.style.width = r.total > 0 ? (r.evaluated / r.total * 100) + '%' : '0%';
+    if (lbl) lbl.textContent = r.evaluated + ' / ' + r.total + ' criterios';
+    const rs  = document.getElementById('rs-' + m.key);
+    const rsp = document.getElementById('rs-' + m.key + '-pts');
+    const rss = document.getElementById('rs-' + m.key + '-sem');
+    if (rs)  rs.textContent  = r.pct !== null ? r.pct.toFixed(2) + '%' : '—';
+    if (rsp) rsp.textContent = r.pct !== null ? r.earned/2 + '/' + r.possible/2 + ' pts' : '—';
+    if (rss) rss.innerHTML   = `<span class="semaforo ${sem.cls}">${sem.lbl}</span>`;
+  });
+
+  // Global header
+  const gSem = semaforo(total.pct, total.autofail);
+  document.getElementById('g-pct').textContent = total.pct !== null ? total.pct.toFixed(2) + '%' : '—';
+  document.getElementById('g-pts').textContent = total.possibleAll > 0 ? total.earnedAll/2 + '/' + total.possibleAll/2 + ' pts' : '— pts';
+  document.getElementById('g-sem').textContent = gSem.lbl;
+
+  // Summary total card
+  const rt  = document.getElementById('rs-total');
+  const rtp = document.getElementById('rs-total-pts');
+  const rts = document.getElementById('rs-total-sem');
+  if (rt)  rt.textContent  = total.pct !== null ? total.pct.toFixed(2) + '%' : '—';
+  if (rtp) rtp.textContent = total.pct !== null ? total.earnedAll/2 + '/' + total.possibleAll/2 + ' pts' + (total.autofail ? ' · ⛔ ' + total.afTipo : '') : '—';
+  if (rts) rts.innerHTML   = `<span class="semaforo ${gSem.cls}">${gSem.lbl}</span>`;
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function autoFillCiudad() {
+  const sel = document.getElementById('m-cp');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('m-ciudad').value = opt.dataset.ciudad || '';
+}
+
+function toggleSec(key) {
+  const el = document.getElementById('sec-' + key);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+function openReport() {
+  const results = {};
+  SECTION_META.forEach(m => { results[m.key] = calcSection(m.key); });
+  const total = calcTotal(results);
+  const gSem  = semaforo(total.pct, total.autofail);
+
+  const cp       = document.getElementById('m-cp').value || '—';
+  const ciudad   = document.getElementById('m-ciudad').value || '—';
+  const fecha    = document.getElementById('m-fecha').value || '—';
+  const trim     = document.getElementById('m-trimestre').value;
+  const auditor  = document.getElementById('m-auditor').value || '—';
+  const visita   = document.getElementById('m-visita').value;
+
+  let scoresHtml = '';
+  SECTION_META.forEach(m => {
+    const r   = results[m.key];
+    const sem = semaforo(r.pct, r.hasPlaga || r.hasCaducado);
+    scoresHtml += `<div class="r-sc">
+      <div class="n" style="color:${m.color}">${r.pct !== null ? r.pct.toFixed(2) + '%' : '—'}</div>
+      <div class="l">${m.short}</div>
+      <div class="s"><span class="semaforo ${sem.cls}">${sem.lbl}</span></div>
+    </div>`;
+  });
+
+  let findingsHtml = '';
+  SECTION_META.forEach(m => {
+    const items = DEFS[m.key].filter(c => c.scored);
+    const fails = items.filter(c => { const s = state[c.id]; return s && s.score === 0; });
+    if (!fails.length) return;
+    findingsHtml += `<div class="r-sec"><h3 class="${m.key}">${m.label}</h3>`;
+    fails.forEach(c => {
+      const s = state[c.id];
+      const af = c.autofail ? ' af' : ' s0';
+      findingsHtml += `<div class="finding${af}">
+        <div class="ft">${c.code} — ${c.t}${c.autofail ? ' <span class="af-tag">AUTOFAIL</span>' : ''}</div>
+        ${s.hallazgo ? `<div class="fd"><strong>Hallazgo:</strong> ${s.hallazgo}</div>` : ''}
+        ${s.accion   ? `<div class="fd"><strong>Acción inmediata:</strong> ${s.accion}</div>` : ''}
+        ${s.accion2  ? `<div class="fd"><strong>Acción C/M plazo:</strong> ${s.accion2}</div>` : ''}
+        ${s.resp     ? `<div class="fd"><strong>Responsable:</strong> ${s.resp}</div>` : ''}
+        ${s.fechalim ? `<div class="fd"><strong>Fecha límite:</strong> ${s.fechalim}</div>` : ''}
+      </div>`;
+    });
+    findingsHtml += '</div>';
+  });
+  if (!findingsHtml) findingsHtml = '<p style="font-size:13px;color:var(--gray-500);">✅ Sin hallazgos registrados.</p>';
+
+  const fortalezas = document.getElementById('obs-fortalezas').value;
+  const riesgos    = document.getElementById('obs-riesgos').value;
+  const acuerdos   = document.getElementById('obs-acuerdos').value;
+
+  document.getElementById('modal-content').innerHTML = `
+    <h2>🏭 Reporte MHA — Centro de Producción</h2>
+    <div class="sub">Foodology · Auditoría Sanitaria CP</div>
+    <div class="report-meta">
+      <div class="rm"><strong>Centro de Producción</strong>${cp}</div>
+      <div class="rm"><strong>Ciudad</strong>${ciudad}</div>
+      <div class="rm"><strong>Fecha</strong>${fecha}</div>
+      <div class="rm"><strong>Trimestre</strong>${trim} · ${visita}</div>
+      <div class="rm"><strong>Auditor</strong>${auditor}</div>
+      <div class="rm"><strong>Resultado</strong><span class="semaforo ${gSem.cls}">${gSem.lbl}</span>${total.autofail ? ' · ' + total.afTipo : ''}</div>
+    </div>
+    <div class="r-scores">
+      <div class="r-sc" style="min-width:100%;background:${total.autofail?'#f1f5f9':'var(--brand-light)'};border-color:${total.autofail?'#1f2937':'var(--brand)'};">
+        <div class="n" style="color:${total.autofail?'#1f2937':'var(--brand)'}">${total.pct !== null ? total.pct.toFixed(2) + '%' : '—'}</div>
+        <div class="l">Total · ${total.earnedAll/2}/${total.possibleAll/2} pts${total.autofail?' · ⛔ AUTOFAIL':''}</div>
+        <div class="s"><span class="semaforo ${gSem.cls}">${gSem.lbl}</span></div>
+      </div>
+      ${scoresHtml}
+    </div>
+    <h3 style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--gray-700);">Hallazgos</h3>
+    ${findingsHtml}
+    ${fortalezas || riesgos || acuerdos ? `
+    <h3 style="font-size:13px;font-weight:700;margin:14px 0 10px;color:var(--gray-700);">Observaciones</h3>
+    ${fortalezas ? `<div class="finding"><div class="ft">💪 Fortalezas</div><div class="fd">${fortalezas}</div></div>` : ''}
+    ${riesgos    ? `<div class="finding"><div class="ft">⚠️ Riesgos/urgencias</div><div class="fd">${riesgos}</div></div>` : ''}
+    ${acuerdos   ? `<div class="finding"><div class="ft">🤝 Acuerdos</div><div class="fd">${acuerdos}</div></div>` : ''}
+    ` : ''}
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-outline" onclick="printReport()">🖨️ Imprimir</button>
+    </div>
+    <p class="print-hint">Usa Ctrl+P o el botón de imprimir para guardar como PDF</p>`;
+
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function printReport() {
+  document.body.classList.add('printing-report');
+  window.print();
+  document.body.classList.remove('printing-report');
+}
+
+function closeModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+}
+
+// ─── EXPORT TRACKER ROW ───────────────────────────────────────────────────────
+async function exportTrackerRow() {
+  const results = {};
+  SECTION_META.forEach(m => { results[m.key] = calcSection(m.key); });
+  const total = calcTotal(results);
+
+  const cp      = document.getElementById('m-cp').value || '';
+  const ciudad  = document.getElementById('m-ciudad').value || '';
+  const fecha   = document.getElementById('m-fecha').value || '';
+  const trim    = document.getElementById('m-trimestre').value || '';
+  const auditor = document.getElementById('m-auditor').value || '';
+  const visita  = document.getElementById('m-visita').value || '';
+
+  const wb = new ExcelJS.Workbook();
+  const wsReg = wb.addWorksheet('Registro');
+  const wsHal = wb.addWorksheet('Hallazgos');
+
+  // Headers — Registro
+  const regHdrs = ['Ciudad','Centro de Producción','Visita','Fecha','Trimestre','Auditor',
+    'Score SA (%)','Score ET (%)','Score LP (%)','Score MT (%)','Score PA (%)','Score SI (%)',
+    'Score Total (%)','Autofail','Link Reporte','Link Fotos'];
+  const hRow = wsReg.addRow(regHdrs);
+  hRow.font = {bold:true}; hRow.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF0F766E'}};
+  hRow.font = {bold:true, color:{argb:'FFFFFFFF'}};
+
+  const fmt = v => v !== null ? parseFloat(v.toFixed(2)) : '';
+  wsReg.addRow([
+    ciudad, cp, visita, fecha, trim, auditor,
+    fmt(results.sa.pct), fmt(results.et.pct), fmt(results.lp.pct),
+    fmt(results.mt.pct), fmt(results.pa.pct), fmt(results.si.pct),
+    fmt(total.pct), total.afTipo,
+    '', ''  // link reporte, link fotos — el usuario los completa
+  ]);
+  wsReg.columns.forEach(c => { c.width = 20; });
+
+  // Hallazgos sheet
+  const halHdrs = ['Sección','Código','Pregunta','Hallazgo','Acción Inmediata','Acción C/M Plazo','Responsable','Fecha Límite','Autofail'];
+  const hh = wsHal.addRow(halHdrs);
+  hh.font = {bold:true}; hh.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF0F766E'}};
+  hh.font = {bold:true, color:{argb:'FFFFFFFF'}};
+  SECTION_META.forEach(m => {
+    DEFS[m.key].filter(c => c.scored).forEach(c => {
+      const s = state[c.id];
+      if (!s || s.score !== 0) return;
+      wsHal.addRow([m.short, c.code, c.t, s.hallazgo||'', s.accion||'', s.accion2||'', s.resp||'', s.fechalim||'', c.autofail ? c.afLabel : '']);
+    });
+  });
+  wsHal.columns.forEach(col => { col.width = 30; });
+
+  const buf = await wb.xlsx.writeBuffer();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  a.download = `MHA_CP_${cp.replace(/\s/g,'_')}_${fecha || 'SinFecha'}.xlsx`;
+  a.click();
+}
+
+// ─── SAVE / RESTORE ───────────────────────────────────────────────────────────
+function saveJSON() {
+  const data = {
+    meta: {
+      cp:       document.getElementById('m-cp').value,
+      ciudad:   document.getElementById('m-ciudad').value,
+      fecha:    document.getElementById('m-fecha').value,
+      trim:     document.getElementById('m-trimestre').value,
+      auditor:  document.getElementById('m-auditor').value,
+      visita:   document.getElementById('m-visita').value,
+    },
+    state,
+    obs: {
+      fortalezas: document.getElementById('obs-fortalezas').value,
+      riesgos:    document.getElementById('obs-riesgos').value,
+      acuerdos:   document.getElementById('obs-acuerdos').value,
+    }
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const cp    = document.getElementById('m-cp').value || 'CP';
+  const fecha = document.getElementById('m-fecha').value || 'borrador';
+  a.download = `MHA_CP_${cp.replace(/\s/g,'_')}_${fecha}.json`;
+  a.click();
+}
+
+function resetForm() {
+  if (!confirm('¿Iniciar nueva evaluación? Se perderán los datos no guardados.')) return;
+  Object.keys(state).forEach(k => delete state[k]);
+  document.getElementById('m-cp').value = '';
+  document.getElementById('m-ciudad').value = '';
+  document.getElementById('m-fecha').value = '';
+  document.getElementById('m-auditor').value = '';
+  SECTION_META.forEach(m => renderBlock(m.key));
+  document.getElementById('obs-fortalezas').value = '';
+  document.getElementById('obs-riesgos').value = '';
+  document.getElementById('obs-acuerdos').value = '';
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  SECTION_META.forEach(m => renderBlock(m.key));
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('m-fecha').value = today;
+});
+</script>
+</body>
+</html>
