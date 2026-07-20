@@ -210,6 +210,7 @@ main{max-width:860px;margin:0 auto;padding:20px 16px 96px;}
       <div class="fld"><label>Fecha de visita</label><input type="date" id="m-fecha"></div>
       <div class="fld"><label>Trimestre</label><select id="m-trimestre"><option>Q1 2026</option><option>Q2 2026</option><option selected>Q3 2026</option><option>Q4 2026</option><option>Q1 2027</option></select></div>
       <div class="fld"><label>Auditor / Quality</label><select id="m-auditor"><option value="">Selecciona…</option><option>Arturo García</option><option>Itzia Diaz</option><option>Ilia Sandoval</option><option>Yoritzel Rosales</option></select></div>
+      <div class="fld"><label>Tipo de auditoría</label><select id="m-modalidad"><option value="Presencial">Presencial</option><option value="Virtual">Virtual</option></select></div>
     </div>
   </div>
 </div>
@@ -722,8 +723,9 @@ function openReport() {
   const cp       = document.getElementById('m-cp').value || '—';
   const ciudad   = document.getElementById('m-ciudad').value || '—';
   const fecha    = document.getElementById('m-fecha').value || '—';
-  const trim     = document.getElementById('m-trimestre').value;
-  const auditor  = document.getElementById('m-auditor').value || '—';
+  const trim      = document.getElementById('m-trimestre').value;
+  const auditor   = document.getElementById('m-auditor').value || '—';
+  const modalidad = document.getElementById('m-modalidad').value || 'Presencial';
 
   let scoresHtml = '';
   SECTION_META.forEach(m => {
@@ -800,14 +802,42 @@ function openReport() {
     checklistHtml += `</div>`;
   });
 
-  // Resumen rápido de hallazgos (solo No) para el inicio
-  let totalFails = 0;
+  // ── Hallazgos (solo No) — sección prominente al inicio ──────────────────────
+  const secBadge = {};
   SECTION_META.forEach(m => {
-    totalFails += DEFS[m.key].filter(c => c.scored && state[c.id] && state[c.id].score === 0).length;
+    const bgMap = {sa:'#eff6ff',et:'#f0fdf4',lp:'#f0fdfa',mt:'#faf5ff',pa:'#fff1f2',si:'#fffbeb'};
+    secBadge[m.key] = {label: m.short, color: m.color, bg: bgMap[m.key] || '#f9fafb'};
   });
-  const failsBanner = totalFails > 0
-    ? `<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;font-weight:700;color:#b91c1c;">⚠️ ${totalFails} criterio${totalFails!==1?'s':''} No cumplido${totalFails!==1?'s':''} en esta auditoría</div>`
-    : `<div style="background:#dcfce7;border:1.5px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;font-weight:700;color:#15803d;">✅ Todos los criterios evaluados cumplen</div>`;
+
+  let allFindings = '';
+  let totalHallazgos = 0;
+  SECTION_META.forEach(m => {
+    DEFS[m.key].forEach(c => {
+      if (!c.scored) return;
+      const s = state[c.id];
+      if (!s || s.score === undefined || s.score !== 0) return;
+      totalHallazgos++;
+      const af = c.autofail ? ` <span style="font-size:9px;font-weight:700;background:#1f2937;color:#fff;border-radius:3px;padding:1px 5px;margin-left:5px;">AUTOFAIL${c.afLabel ? ' · ' + c.afLabel : ''}</span>` : '';
+      const badge = secBadge[m.key];
+      allFindings += `<div class="finding ${c.autofail ? 'af' : 's0'}" style="position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--gray-400);font-weight:600;margin-bottom:1px;">${c.code}</div>
+            <div class="ft">${c.t}${af} — 🔴 No</div>
+          </div>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${badge.bg};color:${badge.color};white-space:nowrap;">${badge.label}</span>
+        </div>
+        ${s.hallazgo ? `<div class="fd">📝 <b>Hallazgo:</b> ${s.hallazgo}</div>` : ''}
+        ${s.accion   ? `<div class="fd">⚡ <b>Acción inmediata:</b> ${s.accion}</div>` : ''}
+        ${s.accion2  ? `<div class="fd">🔧 <b>Acción C/M plazo:</b> ${s.accion2}</div>` : ''}
+        ${s.resp || s.fechalim ? `<div class="fd" style="display:flex;gap:16px;flex-wrap:wrap;">${s.resp ? `<span>👤 <b>Responsable:</b> ${s.resp}</span>` : ''}${s.fechalim ? `<span>📅 <b>Fecha límite:</b> ${s.fechalim}</span>` : ''}</div>` : ''}
+      </div>`;
+    });
+  });
+
+  const hallazgosSection = totalHallazgos > 0
+    ? `<h3 style="font-size:13px;font-weight:700;margin:16px 0 10px;color:#b91c1c;">🔴 Hallazgos (${totalHallazgos})</h3>${allFindings}`
+    : `<div style="background:#dcfce7;border:1.5px solid #86efac;border-radius:8px;padding:10px 14px;margin:16px 0 10px;font-size:12px;font-weight:700;color:#15803d;">✅ Sin hallazgos — todos los criterios evaluados cumplen</div>`;
 
   const fortalezas = document.getElementById('obs-fortalezas').value;
   const riesgos    = document.getElementById('obs-riesgos').value;
@@ -815,13 +845,14 @@ function openReport() {
 
   document.getElementById('modal-content').innerHTML = `
     <h2>🏭 Reporte MHA — Centro de Producción</h2>
-    <div class="sub">Foodology · Auditoría Sanitaria CP</div>
+    <div class="sub">Foodology · Auditoría Sanitaria CP <span style="font-size:9px;color:var(--gray-400);margin-left:8px;">v2</span></div>
     <div class="report-meta">
       <div class="rm"><strong>Centro de Producción</strong>${cp}</div>
       <div class="rm"><strong>Ciudad</strong>${ciudad}</div>
       <div class="rm"><strong>Fecha</strong>${fecha}</div>
       <div class="rm"><strong>Trimestre</strong>${trim}</div>
       <div class="rm"><strong>Auditor</strong>${auditor}</div>
+      <div class="rm"><strong>Tipo</strong>${modalidad}</div>
       <div class="rm"><strong>Resultado</strong><span class="semaforo ${gSem.cls}">${gSem.lbl}</span>${total.autofail ? ' · ' + total.afTipo : ''}</div>
     </div>
     <div class="r-scores">
@@ -832,8 +863,8 @@ function openReport() {
       </div>
       ${scoresHtml}
     </div>
-    <h3 style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--gray-700);">Checklist de criterios evaluados</h3>
-    ${failsBanner}
+    ${hallazgosSection}
+    <h3 style="font-size:13px;font-weight:700;margin:16px 0 10px;color:var(--gray-700);">Checklist de criterios evaluados</h3>
     ${checklistHtml}
     ${fortalezas || riesgos || acuerdos ? `
     <h3 style="font-size:13px;font-weight:700;margin:14px 0 10px;color:var(--gray-700);">Observaciones</h3>
@@ -869,8 +900,9 @@ async function exportTrackerRow() {
   const cp      = document.getElementById('m-cp').value || '';
   const ciudad  = document.getElementById('m-ciudad').value || '';
   const fecha   = document.getElementById('m-fecha').value || '';
-  const trim    = document.getElementById('m-trimestre').value || '';
-  const auditor = document.getElementById('m-auditor').value || '';
+  const trim      = document.getElementById('m-trimestre').value || '';
+  const auditor   = document.getElementById('m-auditor').value || '';
+  const modalidad = document.getElementById('m-modalidad').value || 'Presencial';
 
 
   const wb = new ExcelJS.Workbook();
@@ -878,7 +910,7 @@ async function exportTrackerRow() {
   const wsHal = wb.addWorksheet('Hallazgos');
 
   // Headers — Registro
-  const regHdrs = ['Ciudad','Centro de Producción','Fecha','Trimestre','Auditor',
+  const regHdrs = ['Ciudad','Centro de Producción','Fecha','Trimestre','Auditor','Modalidad',
     'Score SA (%)','Score ET (%)','Score LP (%)','Score MT (%)','Score PA (%)','Score SI (%)',
     'Score Total (%)','Autofail','Link Reporte','Link Fotos'];
   const hRow = wsReg.addRow(regHdrs);
@@ -887,7 +919,7 @@ async function exportTrackerRow() {
 
   const fmt = v => v !== null ? parseFloat(v.toFixed(2)) : '';
   wsReg.addRow([
-    ciudad, cp, fecha, trim, auditor,
+    ciudad, cp, fecha, trim, auditor, modalidad,
     fmt(results.sa.pct), fmt(results.et.pct), fmt(results.lp.pct),
     fmt(results.mt.pct), fmt(results.pa.pct), fmt(results.si.pct),
     fmt(total.pct), total.afTipo,
@@ -975,8 +1007,9 @@ function saveJSON() {
       cp:       document.getElementById('m-cp').value,
       ciudad:   document.getElementById('m-ciudad').value,
       fecha:    document.getElementById('m-fecha').value,
-      trim:     document.getElementById('m-trimestre').value,
-      auditor:  document.getElementById('m-auditor').value,
+      trim:      document.getElementById('m-trimestre').value,
+      auditor:   document.getElementById('m-auditor').value,
+      modalidad: document.getElementById('m-modalidad').value,
     },
     state,
     obs: {
